@@ -9,11 +9,12 @@ from __future__ import annotations
 
 import logging
 import time
+from datetime import datetime
 
 from playwright.sync_api import sync_playwright
 
 from feed_trainer.log import setup_logging
-from feed_trainer.threads import LOGIN_URL, is_logged_in, open_context
+from feed_trainer.threads import LOGIN_MARKER, LOGIN_URL, is_logged_in, open_context
 
 TIMEOUT_SECONDS = 600
 
@@ -26,6 +27,7 @@ def main() -> None:
         context = open_context(pw, headless=False)
         try:
             if is_logged_in(context):
+                LOGIN_MARKER.write_text(f"{datetime.now():%Y-%m-%d %H:%M}", encoding="utf-8")
                 log.info("已經是登入狀態，不需要重新登入")
                 return
             page = context.pages[0] if context.pages else context.new_page()
@@ -35,6 +37,7 @@ def main() -> None:
             while time.time() < deadline:
                 if is_logged_in(context):
                     page.wait_for_timeout(3000)  # 讓登入流程寫完 cookie
+                    LOGIN_MARKER.write_text(f"{datetime.now():%Y-%m-%d %H:%M}", encoding="utf-8")
                     log.info("登入成功，狀態已儲存到 .threads_profile/")
                     return
                 page.wait_for_timeout(2000)

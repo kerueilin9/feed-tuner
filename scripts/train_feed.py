@@ -4,7 +4,7 @@
     uv run python scripts/train_feed.py --count 30   # 臨時改篇數
 
 dry_run：只記錄會做的動作，捲動節奏與一般瀏覽相同，不點擊、不刻意停留。
-中途按 Ctrl+C 會停止並保存已處理的結果。
+中途按 Ctrl+C（或建立 data/stop.flag）會停止並保存已處理的結果。
 
 輸出 results/<時間>/：report.md、results.json、posts.json、actions.json、run.log
 累積紀錄（不進 git）：
@@ -30,6 +30,8 @@ from feed_trainer.threads import FeedSession, NotLoggedInError, SafetyStopError
 
 log = logging.getLogger("train_feed")
 HISTORY = Path("data/feed_history.jsonl")
+# 建立此檔即可讓執行中的 train_feed 在處理完當前貼文後停止（操作介面的「停止」按鈕使用）
+STOP_FILE = Path("data/stop.flag")
 
 
 def main() -> int:
@@ -54,6 +56,7 @@ def main() -> int:
 
     log.info("開始執行（%s 模式，%d 篇），結果資料夾：%s", mode, count, run_dir)
     log.debug("設定：%s", config)
+    STOP_FILE.unlink(missing_ok=True)
     scorer = Scorer(args.model)  # 先載入模型，避免瀏覽器開著空等
     action_log = ActionLog(mode)
     policy = Policy(config, action_log)
@@ -67,6 +70,11 @@ def main() -> int:
     try:
         with FeedSession(headless=args.headless, scroll_pause=tuple(config["pacing"]["scroll_pause"])) as feed:
             for i, post in enumerate(feed.posts(count), 1):
+                if STOP_FILE.exists():
+                    STOP_FILE.unlink(missing_ok=True)
+                    stop_reason = "使用者中斷"
+                    log.warning("收到停止要求，保存已處理的 %d 篇", len(rows))
+                    break
                 posts.append(post)
                 row = scorer.score(post)
                 consecutive_errors = consecutive_errors + 1 if row["error"] and row["error"] != "no_text" else 0

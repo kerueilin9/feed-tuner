@@ -20,6 +20,8 @@ from typing import Any
 log = logging.getLogger(__name__)
 
 PROFILE_DIR = Path(".threads_profile")
+# 登入成功時寫入時間；偵測到未登入時刪除。供操作介面顯示登入狀態
+LOGIN_MARKER = PROFILE_DIR / "logged_in.txt"
 HOME_URL = "https://www.threads.com/"
 LOGIN_URL = "https://www.threads.com/login"
 SESSION_COOKIE = "sessionid"
@@ -167,6 +169,7 @@ class FeedSession:
         try:
             self._context = open_context(self._pw, self.headless)
             if not is_logged_in(self._context):
+                LOGIN_MARKER.unlink(missing_ok=True)
                 raise NotLoggedInError("尚未登入 Threads，請先執行：uv run python scripts/login.py")
             self.page = self._context.pages[0] if self._context.pages else self._context.new_page()
             self.page.on("response", self._on_response)
@@ -174,6 +177,7 @@ class FeedSession:
             self.page.goto(HOME_URL, wait_until="domcontentloaded", timeout=60_000)
             self.page.wait_for_timeout(4000)
             if "/login" in self.page.url:
+                LOGIN_MARKER.unlink(missing_ok=True)
                 raise NotLoggedInError("登入狀態已失效，請重新執行：uv run python scripts/login.py")
             self.check_safety()
             for text in self.page.locator('script[type="application/json"]').all_text_contents():
