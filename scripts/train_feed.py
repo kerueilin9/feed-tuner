@@ -25,7 +25,7 @@ from dotenv import load_dotenv
 
 from feed_trainer.actions import ACTION_NAMES, ActionLog, Policy, load_action_config
 from feed_trainer.log import setup_logging
-from feed_trainer.pipeline import Scorer, feed_metrics, md_cell, score_label, write_json, write_outputs
+from feed_trainer.pipeline import Scorer, feed_metrics, md_cell, prefs_fingerprint, score_label, write_json, write_outputs
 from feed_trainer.threads import FeedSession, NotLoggedInError, SafetyStopError
 
 log = logging.getLogger("train_feed")
@@ -37,7 +37,7 @@ STOP_FILE = Path("data/stop.flag")
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--count", type=int, help="本次篇數（預設用設定檔的 posts_per_run）")
-    parser.add_argument("--model", default="laya")
+    parser.add_argument("--model", help="laya 或 jev（預設用設定檔的 model）")
     parser.add_argument("--headless", action="store_true", help="不顯示瀏覽器視窗")
     parser.add_argument("--verbose", action="store_true", help="終端機也顯示 DEBUG")
     args = parser.parse_args()
@@ -57,7 +57,7 @@ def main() -> int:
     log.info("開始執行（%s 模式，%d 篇），結果資料夾：%s", mode, count, run_dir)
     log.debug("設定：%s", config)
     STOP_FILE.unlink(missing_ok=True)
-    scorer = Scorer(args.model)  # 先載入模型，避免瀏覽器開著空等
+    scorer = Scorer(args.model or config["model"])  # 先載入模型，避免瀏覽器開著空等
     action_log = ActionLog(mode)
     policy = Policy(config, action_log)
 
@@ -123,6 +123,9 @@ def main() -> int:
             "time": datetime.now().isoformat(timespec="seconds"),
             "date": date.today().isoformat(),
             "mode": mode,
+            # 模型與偏好：比較趨勢時，兩者不同的執行不能直接相比
+            "model": scorer.model_id,
+            "prefs_hash": prefs_fingerprint(scorer.prefs),
             "run_dir": str(run_dir),
             "posts": len(rows),
             "stop_reason": stop_reason,

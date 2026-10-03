@@ -75,6 +75,14 @@ uv run python scripts/try_post.py --advanced   # 改用 config/profile.yaml 的�
 
 貼上貼文後單獨輸入一行 `.` 送出；`r` 重新讀取設定檔；`q` 離開。
 
+## 測試
+
+```bash
+uv run pytest
+```
+
+涵蓋偏好解析、關鍵字比對、分數組合、互動決策與每日上限、貼文解析；不需要模型、網路或登入。
+
 ## 冒煙測試
 
 ```bash

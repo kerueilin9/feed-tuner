@@ -34,6 +34,9 @@ def load_action_config(path: str | Path = "config/actions.yaml") -> dict[str, An
     config = yaml.safe_load(Path(path).read_text(encoding="utf-8"))
     if config["mode"] not in {"dry_run", "live"}:
         raise ValueError(f"mode 必須是 dry_run 或 live：{config['mode']}")
+    config.setdefault("model", "laya")
+    if not str(config["model"]).startswith(("laya", "jev")):
+        raise ValueError(f"model 必須是 laya 或 jev：{config['model']}")
     return config
 
 

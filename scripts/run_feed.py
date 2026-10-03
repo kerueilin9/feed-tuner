@@ -1,6 +1,6 @@
 """爬取 Threads 首頁貼文 → 依 config/preferences.txt 評分 → 輸出到 results/<時間>/。只讀，不互動。
 
-    uv run python scripts/run_feed.py                      # 爬 20 篇，用 Laya 評分
+    uv run python scripts/run_feed.py                      # 爬 20 篇，用設定檔的模型評分
     uv run python scripts/run_feed.py --count 10 --headless
     uv run python scripts/run_feed.py --from results/20261003-150000/posts.json   # 不重爬，只重新評分
 
@@ -22,6 +22,7 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
+from feed_trainer.actions import load_action_config
 from feed_trainer.log import setup_logging
 from feed_trainer.pipeline import Scorer, md_cell, read_posts, score_label, write_json, write_outputs
 from feed_trainer.threads import NotLoggedInError, SafetyStopError, scrape_feed
@@ -32,7 +33,7 @@ log = logging.getLogger("run_feed")
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--count", type=int, default=20)
-    parser.add_argument("--model", default="laya")
+    parser.add_argument("--model", help="laya 或 jev（預設用 config/actions.yaml 的 model）")
     parser.add_argument("--headless", action="store_true", help="不顯示瀏覽器視窗")
     parser.add_argument("--from", dest="from_file", type=Path, help="改從既有的 posts.json 讀取，不重新爬取")
     parser.add_argument("--verbose", action="store_true", help="終端機也顯示 DEBUG")
@@ -57,7 +58,7 @@ def main() -> int:
         return 1
     write_json(run_dir / "posts.json", [p.to_dict() for p in posts])
 
-    scorer = Scorer(args.model)
+    scorer = Scorer(args.model or load_action_config()["model"])
     rows = []
     for i, post in enumerate(posts, 1):
         row = scorer.score(post)

@@ -8,6 +8,10 @@
 mode: dry_run
 posts_per_run: 100
 
+# 評分模型：laya（本機、免費）或 jev（TypeSafe API，需在 .env 設定 TYPESAFE_API_KEY）
+# 實驗期間不要更換模型或偏好，否則前後趨勢無法比較
+model: laya
+
 actions:
   # 高分貼文多停留幾秒（看不到、風險最低，效果不確定）
   dwell:

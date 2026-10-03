@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import logging
 import statistics
@@ -189,6 +190,12 @@ def write_report(path: Path, rows: list[dict], model_name: str, prefs: list[Pref
         lines.append(line)
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+
+def prefs_fingerprint(prefs: list[Preference]) -> str:
+    """偏好內容的短雜湊；趨勢比較時用來偵測實驗中途改過偏好。"""
+    canonical = json.dumps([[p.polarity, p.topic, sorted(p.keywords)] for p in prefs], ensure_ascii=False)
+    return hashlib.sha1(canonical.encode("utf-8")).hexdigest()[:8]
 
 
 def feed_metrics(rows: list[dict]) -> dict:

@@ -22,6 +22,10 @@ from ruamel.yaml import YAML
 ROOT = Path(__file__).resolve().parent.parent
 os.chdir(ROOT)  # 各腳本與設定檔都使用相對路徑
 
+from dotenv import load_dotenv  # noqa: E402
+
+load_dotenv()  # 試玩分頁使用 Jev 時需要 TYPESAFE_API_KEY
+
 from feed_trainer.actions import ACTION_LOG, load_action_config  # noqa: E402
 from feed_trainer.preferences import parse_line  # noqa: E402
 from feed_trainer.threads import LOGIN_MARKER  # noqa: E402
@@ -144,8 +148,16 @@ def run_tab(on_finished) -> None:
 
         with ui.card().classes("w-96"):
             ui.label("每日訓練").classes("text-lg font-medium")
-            mode_text = "預演（只記錄，不互動）" if config["mode"] == "dry_run" else "實際互動"
-            ui.label(f"模式：{mode_text}").classes("text-sm")
+            setup_label = ui.label().classes("text-sm")
+
+            def refresh_setup() -> None:
+                # 設定分頁存檔後會改變，定期重新讀取
+                cfg = load_action_config()
+                mode_text = "預演（只記錄，不互動）" if cfg["mode"] == "dry_run" else "實際互動"
+                setup_label.text = f"模式：{mode_text}｜模型：{cfg['model']}"
+
+            refresh_setup()
+            ui.timer(2.0, refresh_setup)
             count = ui.number("篇數", value=config["posts_per_run"], min=1, max=300, step=10).classes("w-32")
             headless = ui.switch("不顯示瀏覽器視窗")
 
@@ -303,6 +315,11 @@ def trend_tab() -> callable:
             if not history:
                 ui.label("還沒有紀錄。每天執行一次「每日訓練」後，這裡會顯示首頁內容組成的變化。")
                 return
+            combos = sorted({(e.get("model", "?"), e.get("prefs_hash", "?")) for e in history})
+            if len(combos) > 1:
+                ui.label(
+                    "⚠ 紀錄中有不同的模型或偏好設定，彼此的比例不能直接比較：" + "、".join(f"{m}／偏好 {h}" for m, h in combos)
+                ).classes("text-sm text-orange-700")
             x = [f"{e['time'][5:16].replace('T', ' ')}{'*' if e['mode'] == 'live' else ''}" for e in history]
             topics = sorted({t for e in history for t in e["metrics"]["topic_share"]})
 
@@ -362,6 +379,10 @@ def settings_tab() -> None:
             ui.label("互動設定（config/actions.yaml）").classes("text-lg font-medium")
             cfg = yaml.load(ACTIONS_FILE.read_text(encoding="utf-8"))
             ui.select({"dry_run": "預演（只記錄，不互動）"}, value="dry_run", label="模式").classes("w-64").bind_value(cfg, "mode")
+            ui.select(
+                {"laya": "Laya（本機、免費）", "jev": "Jev（TypeSafe API，較準）"}, label="評分模型"
+            ).classes("w-64").bind_value(cfg, "model")
+            ui.label("基準期開始後不要更換模型，否則前後趨勢無法比較。").classes("text-xs text-orange-700")
             ui.label("實際互動（live）要先在登入後的畫面驗證點擊，尚未開放。").classes("text-xs text-gray-500")
             ui.number("每次篇數", min=1, max=300, step=10).bind_value(
                 cfg, "posts_per_run", forward=lambda v: int(v) if v else 100
@@ -405,7 +426,7 @@ def settings_tab() -> None:
 
 def try_tab() -> None:
     state: dict = {}
-    ui.label("貼上一篇貼文，看目前偏好下的評分（第一次需載入模型，約十幾秒）。").classes("text-sm text-gray-500")
+    ui.label("貼上一篇貼文，用目前的偏好與設定中的模型評分（Laya 第一次需載入約十幾秒）。").classes("text-sm text-gray-500")
     text = ui.textarea("貼文內容").props("outlined autogrow").classes("w-[640px]")
     result = ui.column()
 
@@ -413,10 +434,11 @@ def try_tab() -> None:
         from feed_trainer.models import load_model
         from feed_trainer.preferences import judge, load_preferences, to_questions
 
-        if "model" not in state:
-            state["model"] = load_model("laya")
+        name = load_action_config()["model"]
+        if name not in state:
+            state[name] = load_model(name)
         prefs = load_preferences()
-        r = state["model"].answer({"post": post}, to_questions(prefs))
+        r = state[name].answer({"post": post}, to_questions(prefs))
         return judge(prefs, r, post), r
 
     async def go() -> None:
