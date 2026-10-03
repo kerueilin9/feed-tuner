@@ -16,12 +16,15 @@ cp .env.example .env   # 使用 Jev 時填入 TYPESAFE_API_KEY
 
 ## 試玩
 
+在 [config/preferences.txt](config/preferences.txt) 一行寫一句偏好，例如「我想看遊戲開發內容」「不要爭議文章」，然後：
+
 ```bash
 uv run python scripts/try_post.py              # Laya
 uv run python scripts/try_post.py --model jev  # Jev
+uv run python scripts/try_post.py --advanced   # 改用 config/profile.yaml 的進階問題設定
 ```
 
-貼上貼文後單獨輸入一行 `.` 送出；`r` 重新讀取 `config/profile.yaml`；`q` 離開。
+貼上貼文後單獨輸入一行 `.` 送出；`r` 重新讀取設定檔；`q` 離開。
 
 ## 冒煙測試
 

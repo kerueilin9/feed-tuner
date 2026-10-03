@@ -115,7 +115,18 @@ Threads_Feed_Trainer/
 - `split`：`calib`（調整問題與門檻用）／`test`（只在最終比較時使用）
 - 重複或高度相似的貼文必須在同一個 split。
 
-### 5.3 設定 `config/profile.yaml`
+### 5.3 簡易偏好 `config/preferences.txt`（對外部使用者的預設）
+
+使用者一行寫一句，例如「我想看遊戲開發內容」「不要爭議文章」：
+
+- 以「不要／不想看／少看／避免」等開頭為不想看，其餘為想看；同一行可用逗號分開。
+- 每句轉成一題 Noul：「這篇貼文是否屬於「{主題}」？」，另固定加入一題「資訊不足」判斷。
+- 分數：`overall = 100 × 想看項目最高機率 × (1 − 不想看項目最高機率)`；沒有想看項目時，想看項目以 1 計。
+- 理由直接列出各偏好的命中機率（✓ 想看、✗ 不想看）。
+
+實作見 [src/feed_trainer/preferences.py](src/feed_trainer/preferences.py)。這也是階段 B 擴充功能設定畫面的形式。
+
+### 5.4 進階設定 `config/profile.yaml`（自用、實驗用）
 
 完整內容見 [config/profile.yaml](config/profile.yaml)。每題的 `type`／`instructions`／`criteria` 直接送給模型；`group`、`effect` 只給程式使用，送出前移除。
 
