@@ -14,6 +14,15 @@ uv sync
 cp .env.example .env   # 使用 Jev 時填入 TYPESAFE_API_KEY
 ```
 
+## 試玩
+
+```bash
+uv run python scripts/try_post.py              # Laya
+uv run python scripts/try_post.py --model jev  # Jev
+```
+
+貼上貼文後單獨輸入一行 `.` 送出；`r` 重新讀取 `config/profile.yaml`；`q` 離開。
+
 ## 冒煙測試
 
 ```bash
