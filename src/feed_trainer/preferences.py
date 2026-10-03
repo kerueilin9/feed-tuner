@@ -54,8 +54,12 @@ class Preference:
         return {"type": "noul", "instructions": f"這篇貼文是否屬於「{self.topic}」？"}
 
     def keyword_hit(self, text: str) -> str | None:
-        lowered = text.lower()
-        return next((k for k in self.keywords if k.lower() in lowered), None)
+        for k in self.keywords:
+            # 英數關鍵字比對完整單字，避免 community 命中 Unity；中文直接比對子字串
+            pattern = rf"(?<![A-Za-z0-9]){re.escape(k)}(?![A-Za-z0-9])" if k.isascii() else re.escape(k)
+            if re.search(pattern, text, re.IGNORECASE):
+                return k
+        return None
 
 
 @dataclass

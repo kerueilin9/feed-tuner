@@ -21,8 +21,14 @@ uv run python scripts/login.py     # 第一次：在開啟的 Chrome 視窗手�
 uv run python scripts/run_feed.py  # 爬 20 篇首頁貼文，用 Laya 依 config/preferences.txt 評分
 ```
 
-結果在 `results/<時間>/`：`report.md`（排序報告）、`posts.jsonl`、`scores.jsonl`、`summary.json`、`run.log`。
-只改偏好、不想重爬時：`uv run python scripts/run_feed.py --from results/<時間>/posts.jsonl`。
+結果在 `results/<時間>/`：
+
+- `report.md`：依分數排序的表格
+- `results.json`：整理過的完整結果（摘要＋每篇的分數、偏好判斷，依分數排序）
+- `posts.json`：爬到的原始貼文
+- `run.log`：本次執行的日誌
+
+只改偏好、不想重爬時：`uv run python scripts/run_feed.py --from results/<時間>/posts.json`。
 
 日誌累積在 `logs/feed_trainer.log`，即時監看（PowerShell）：
 
