@@ -1,0 +1,69 @@
+# 偏好設定與評分問題（Game Dev Mode 初版）
+#
+# questions 下每一題的 type／instructions／criteria 直接送給 Jev 或 Laya；
+# group、effect 由程式使用，送出前會移除。
+# 撰寫原則（docs.typesafe.ai jev-1.13 jaggedness）：
+#   - 一題只問一件事，條件寫清楚，邊界情況寫進 criteria
+#   - Score 的每個層級要描述具體情況
+#   - Choice 留「都不是」選項；模型偏好第一個選項，必要時調換順序驗證
+
+mode: game_dev
+version: 1
+
+questions:
+  godot:
+    group: relevance
+    type: score
+    instructions: "這篇貼文和 Godot 遊戲引擎有多相關？"
+    criteria:
+      - "沒有提到 Godot"
+      - "順帶提到 Godot，但主要在講別的事"
+      - "部分內容在討論 Godot"
+      - "主要在討論 Godot 的使用、開發技巧或開發經驗"
+
+  indie_gamedev:
+    group: relevance
+    type: score
+    instructions: "這篇貼文和獨立遊戲開發（遊戲設計、程式、美術、開發紀錄、行銷）有多相關？"
+    criteria:
+      - "與遊戲開發無關"
+      - "與遊戲有關，但不是開發（例如只是玩遊戲的心得）"
+      - "部分內容在討論遊戲開發"
+      - "主要在分享遊戲開發的過程、技巧或經驗"
+
+  concrete:
+    group: quality
+    type: noul
+    instructions: "這篇貼文是否包含具體的做法、程式碼、測試結果、數據或成品展示？"
+
+  beginner:
+    effect: penalty
+    type: noul
+    instructions: "這篇貼文的內容是否只是初學者入門的基礎概念（例如如何建立第一個節點或場景）？"
+
+  engagement_bait:
+    effect: penalty
+    type: noul
+    instructions: "這篇貼文是否主要目的在要求讀者按讚、留言、分享或追蹤，而沒有提供其他內容？"
+
+  needs_context:
+    effect: insufficient
+    type: noul
+    instructions: "只讀這段文字，讀者是否無法理解貼文在說什麼（例如內容依賴圖片、影片、連結或被引用的另一篇貼文）？"
+
+  topic:
+    effect: tag
+    type: choice
+    instructions: "這篇貼文的主要主題是什麼？"
+    criteria:
+      godot: "Godot 遊戲引擎"
+      other_engine: "其他遊戲引擎或開發工具（Unity、Unreal 等）"
+      game_design: "遊戲設計、關卡設計、玩法設計"
+      art_animation: "美術、角色設計、動畫、繪圖"
+      game_marketing: "遊戲行銷、發行、社群經營"
+      other: "以上皆非"
+
+weights:
+  relevance: 0.50
+  quality: 0.30
+  novelty: 0.20

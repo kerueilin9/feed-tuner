@@ -1,0 +1,28 @@
+[project]
+name = "feed-trainer"
+version = "0.1.0"
+description = "Threads Feed Trainer 階段 A：以 Jev／Laya 離線評分貼文"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "laya",
+    "typesafe-sdk",
+    "torch",
+    "pyyaml",
+    "python-dotenv",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/feed_trainer"]
+
+# RTX 3080：使用 CUDA 版 PyTorch，而非 PyPI 上的 CPU 版
+[tool.uv.sources]
+torch = [{ index = "pytorch-cu128" }]
+
+[[tool.uv.index]]
+name = "pytorch-cu128"
+url = "https://download.pytorch.org/whl/cu128"
+explicit = true
