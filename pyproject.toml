@@ -9,6 +9,7 @@ dependencies = [
     "torch",
     "pyyaml",
     "python-dotenv",
+    "playwright>=1.63.0",
 ]
 
 [build-system]

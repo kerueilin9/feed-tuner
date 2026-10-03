@@ -14,6 +14,24 @@ uv sync
 cp .env.example .env   # 使用 Jev 時填入 TYPESAFE_API_KEY
 ```
 
+## 爬取首頁並評分
+
+```bash
+uv run python scripts/login.py     # 第一次：在開啟的 Chrome 視窗手動登入 Threads
+uv run python scripts/run_feed.py  # 爬 20 篇首頁貼文，用 Laya 依 config/preferences.txt 評分
+```
+
+結果在 `results/<時間>/`：`report.md`（排序報告）、`posts.jsonl`、`scores.jsonl`、`summary.json`、`run.log`。
+只改偏好、不想重爬時：`uv run python scripts/run_feed.py --from results/<時間>/posts.jsonl`。
+
+日誌累積在 `logs/feed_trainer.log`，即時監看（PowerShell）：
+
+```powershell
+Get-Content logs\feed_trainer.log -Wait -Tail 50
+```
+
+登入狀態存在 `.threads_profile/`，結果與日誌含他人貼文，三者都不進 git。
+
 ## 試玩
 
 在 [config/preferences.txt](config/preferences.txt) 一行寫一句偏好，例如「我想看遊戲開發內容」「不要爭議文章」，然後：
