@@ -57,16 +57,18 @@ def write_report(path: Path, rows: list[dict], model_name: str, prefs) -> None:
         f"- 模型：{model_name}",
         f"- 偏好：" + "、".join(f"{'想看' if p.polarity == 'want' else '不想看'}「{p.topic}」" for p in prefs),
         "",
-        "| # | 分數 | 作者 | 內容 | 命中 | 媒體 |",
+        "| # | 分數 | 作者 | 內容 | 命中（🔑 關鍵字） | 標記 |",
         "| --- | --- | --- | --- | --- | --- |",
     ]
     for i, r in enumerate(ranked, 1):
         score = "資訊不足" if r["overall"] is None else str(r["overall"])
         hits = "、".join(
-            f"{'✓' if m['polarity'] == 'want' else '✗'}{m['topic']} {m['p']:.0%}" for m in r["matches"] if m["p"] >= 0.5
+            f"{'✓' if m['polarity'] == 'want' else '✗'}{m['topic']} {m['p']:.0%}{'🔑' if m['keyword'] else ''}"
+            for m in r["matches"]
+            if m["p"] >= 0.5
         )
-        media = "有" if r["has_media"] else ""
-        lines.append(f"| {i} | {score} | [@{r['author']}]({r['url']}) | {md_cell(r['text']) or '（無文字）'} | {hits} | {media} |")
+        flags = "、".join(f for f, on in [("媒體", r["has_media"]), ("Threads AI 標記", r.get("gen_ai_label"))] if on)
+        lines.append(f"| {i} | {score} | [@{r['author']}]({r['url']}) | {md_cell(r['text']) or '（無文字）'} | {hits} | {flags} |")
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
@@ -128,11 +130,20 @@ def main() -> int:
             rows.append(row)
             continue
         model_id = result.model
-        verdict = judge(prefs, result)
+        verdict = judge(prefs, result, "\n".join(filter(None, [post.text, post.quoted_text])))
         latencies.append(result.latency_ms)
         row |= {
             "overall": verdict.overall,
-            "matches": [{"topic": p.topic, "polarity": p.polarity, "p": round(prob, 4)} for p, prob in verdict.matches],
+            "matches": [
+                {
+                    "topic": m.preference.topic,
+                    "polarity": m.preference.polarity,
+                    "p": round(m.probability, 4),
+                    "model_p": round(m.model_probability, 4),
+                    "keyword": m.keyword,
+                }
+                for m in verdict.matches
+            ],
             "answers": {qid: {"value": a.value, "confidence": a.confidence} for qid, a in result.answers.items()},
             "latency_ms": round(result.latency_ms, 1),
             "model": result.model,

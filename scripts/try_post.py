@@ -47,15 +47,17 @@ class SimpleMode:
         self.questions = to_questions(self.prefs)
         print("偏好：")
         for p in self.prefs:
-            print(f"  {'想看  ' if p.polarity == 'want' else '不想看'}　{p.topic}")
+            kw = f"　關鍵字：{'、'.join(p.keywords)}" if p.keywords else ""
+            print(f"  {'想看  ' if p.polarity == 'want' else '不想看'}　{p.topic}{kw}")
 
-    def show(self, result: ModelResult) -> None:
-        verdict = judge(self.prefs, result)
+    def show(self, result: ModelResult, post: str) -> None:
+        verdict = judge(self.prefs, result, post)
         score = "資訊不足（內容可能依賴圖片、連結或引用）" if verdict.overall is None else f"{verdict.overall} / 100"
         print(f"\n── 分數：{score}　（{result.model}，{result.latency_ms:.0f}ms）──")
-        for p, prob in verdict.matches:
-            mark = "✓" if p.polarity == "want" else "✗"
-            print(f"  {mark} {bar(prob)} {prob:4.0%}  {p.topic}")
+        for m in verdict.matches:
+            mark = "✓" if m.preference.polarity == "want" else "✗"
+            hint = f"（關鍵字「{m.keyword}」，模型 {m.model_probability:.0%}）" if m.keyword else ""
+            print(f"  {mark} {bar(m.probability)} {m.probability:4.0%}  {m.preference.topic}{hint}")
 
 
 class AdvancedMode:
@@ -108,7 +110,7 @@ def main() -> None:
             mode.load()
             continue
         if post:
-            mode.show(model.answer({"post": post}, mode.questions))
+            mode.show(model.answer({"post": post}, mode.questions), post)
 
 
 if __name__ == "__main__":

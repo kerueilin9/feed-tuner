@@ -47,6 +47,8 @@ class Post:
     is_reply: bool
     quoted_text: str | None
     is_paid_partnership: bool
+    # Threads 自己的 AI 生成偵測欄位（gen_ai_detection_method）；格式未知，先原樣記錄
+    gen_ai_label: Any = None
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -86,6 +88,7 @@ def parse_post(o: dict[str, Any]) -> Post | None:
         is_reply=bool(info.get("is_reply")),
         quoted_text=_caption(quoted) if isinstance(quoted, dict) else None,
         is_paid_partnership=bool(o.get("is_paid_partnership")),
+        gen_ai_label=o.get("gen_ai_detection_method"),
     )
 
 

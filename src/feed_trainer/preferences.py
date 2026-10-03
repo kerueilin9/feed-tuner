@@ -1,6 +1,10 @@
 """簡易偏好：使用者一行寫一句，例如「我想看遊戲內容」「不要爭議文章」。
 
-每句偏好轉成一題 Noul，貼文分數由程式組合：
+每句偏好轉成一題 Noul；可在句尾附關鍵字，例如
+    我想看遊戲開發（關鍵字：Godot、Unity）
+貼文出現任一關鍵字時，該項至少以 KEYWORD_PROBABILITY 計（模型不一定知道 Godot 是遊戲引擎）。
+
+貼文分數由程式組合：
     want  = 想看項目中最高的機率（符合任一項即可；沒有想看項目時為 1）
     avoid = 不想看項目中最高的機率
     overall = 100 × want × (1 − avoid)
@@ -9,7 +13,7 @@
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Literal
 
@@ -22,6 +26,8 @@ AVOID_PREFIXES = ["我不想看到", "我不想看", "不想看到", "不想看"
 WANT_PREFIXES = ["我想多看", "我想看", "想多看", "想看", "多看", "多一點", "我要看", "我要", "我喜歡", "喜歡", "給我"]
 # 不含「和」「跟」：會誤刪「跟風文」這類主題
 CONNECTORS = ["但是", "但", "而且", "還有"]
+KEYWORDS_PATTERN = re.compile(r"[（(]\s*關鍵字\s*[:：]\s*(.+?)\s*[）)]")
+KEYWORD_PROBABILITY = 0.9
 
 # 與偏好無關、固定加入的系統問題
 NEEDS_CONTEXT_ID = "_needs_context"
@@ -37,13 +43,27 @@ class Preference:
     source: str  # 使用者原句
     topic: str  # 去掉「我想看」「不要」後的主題
     polarity: Polarity
+    keywords: list[str] = field(default_factory=list)
 
     @property
     def question_id(self) -> str:
         return f"{self.polarity}:{self.topic}"
 
     def question(self) -> dict:
+        # 2026-10-03 以 Laya 比較三種句型與加長描述，此句型最準；加長描述反而變差
         return {"type": "noul", "instructions": f"這篇貼文是否屬於「{self.topic}」？"}
+
+    def keyword_hit(self, text: str) -> str | None:
+        lowered = text.lower()
+        return next((k for k in self.keywords if k.lower() in lowered), None)
+
+
+@dataclass
+class Match:
+    preference: Preference
+    probability: float  # 採用的機率：max(模型, 關鍵字)
+    model_probability: float
+    keyword: str | None  # 命中的關鍵字
 
 
 def _strip_prefix(text: str, prefixes: list[str]) -> str | None:
@@ -54,6 +74,11 @@ def _strip_prefix(text: str, prefixes: list[str]) -> str | None:
 
 
 def parse_line(line: str) -> list[Preference]:
+    keywords: list[str] = []
+    if m := KEYWORDS_PATTERN.search(line):
+        keywords = [k.strip() for k in re.split(r"[,，、]", m.group(1)) if k.strip()]
+        line = line[: m.start()] + line[m.end() :]
+
     prefs: list[Preference] = []
     polarity: Polarity = "want"
     for fragment in re.split(r"[，,；;]", line):
@@ -72,7 +97,7 @@ def parse_line(line: str) -> list[Preference]:
             topic = text  # 沒有前綴：沿用同一行前一段的方向
         topic = topic.removesuffix("的").strip()
         if topic:
-            prefs.append(Preference(source=fragment.strip(), topic=topic, polarity=polarity))
+            prefs.append(Preference(source=fragment.strip(), topic=topic, polarity=polarity, keywords=keywords))
     return prefs
 
 
@@ -94,21 +119,26 @@ def to_questions(prefs: list[Preference]) -> dict[str, dict]:
 @dataclass
 class Verdict:
     overall: int | None  # None 表示資訊不足
-    matches: list[tuple[Preference, float]]  # (偏好, 機率)，依機率排序
+    matches: list[Match]  # 依機率排序
 
 
-def judge(prefs: list[Preference], result: ModelResult) -> Verdict:
-    matches = sorted(
-        ((p, float(result.answers[p.question_id].value)) for p in prefs if p.question_id in result.answers),
-        key=lambda m: m[1],
-        reverse=True,
-    )
+def judge(prefs: list[Preference], result: ModelResult, text: str) -> Verdict:
+    matches: list[Match] = []
+    for p in prefs:
+        if p.question_id not in result.answers:
+            continue
+        model_p = float(result.answers[p.question_id].value)
+        keyword = p.keyword_hit(text)
+        prob = max(model_p, KEYWORD_PROBABILITY) if keyword else model_p
+        matches.append(Match(p, prob, model_p, keyword))
+    matches.sort(key=lambda m: m.probability, reverse=True)
+
     needs_context = result.answers.get(NEEDS_CONTEXT_ID)
     if needs_context is not None and float(needs_context.value) >= INSUFFICIENT_THRESHOLD:
         return Verdict(overall=None, matches=matches)
 
-    want = [prob for p, prob in matches if p.polarity == "want"]
-    avoid = [prob for p, prob in matches if p.polarity == "avoid"]
+    want = [m.probability for m in matches if m.preference.polarity == "want"]
+    avoid = [m.probability for m in matches if m.preference.polarity == "avoid"]
     want_score = max(want) if want else 1.0
     avoid_score = max(avoid) if avoid else 0.0
     return Verdict(overall=round(100 * want_score * (1 - avoid_score)), matches=matches)
