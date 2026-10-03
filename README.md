@@ -38,6 +38,15 @@ Get-Content logs\feed_trainer.log -Wait -Tail 50
 
 登入狀態存在 `.threads_profile/`，結果與日誌含他人貼文，三者都不進 git。
 
+## 階段 C：邊爬邊互動
+
+設計見 [階段C_設計.md](階段C_設計.md)，設定在 [config/actions.yaml](config/actions.yaml)（預設 `dry_run`，只記錄不互動）。
+
+```bash
+uv run python scripts/train_feed.py   # 每天執行一次：爬 100 篇、評分、決定動作
+uv run python scripts/feed_trend.py   # 查看每天的首頁內容組成變化
+```
+
 ## 試玩
 
 在 [config/preferences.txt](config/preferences.txt) 一行寫一句偏好，例如「我想看遊戲開發內容」「不要爭議文章」，然後：

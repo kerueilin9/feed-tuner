@@ -1,0 +1,50 @@
+# 階段 C：互動設定（scripts/train_feed.py 使用）
+#
+# mode：
+#   dry_run  只記錄「會做什麼動作」，不點擊、不刻意停留（基準期使用）
+#   live     實際執行已啟用的動作
+# 目前 live 尚未實作：點擊按鈕需要先在登入後的畫面上驗證，基準期結束後一起做。
+
+mode: dry_run
+posts_per_run: 100
+
+actions:
+  # 高分貼文多停留幾秒（看不到、風險最低，效果不確定）
+  dwell:
+    enabled: true
+    min_score: 61
+    seconds: [5, 10]
+
+  # 點開高分貼文、看回覆後返回
+  open_post:
+    enabled: true
+    min_score: 75
+    seconds: [8, 15]
+    daily_limit: 15
+
+  # 按讚：只給高分、且沒有任何「不想看」項目命中的貼文
+  like:
+    enabled: true
+    min_score: 85
+    max_avoid: 0.3        # 任一「不想看」項目機率超過此值就不按
+    daily_limit: 10
+
+  # 不感興趣：明顯不想看的貼文
+  not_interested:
+    enabled: true
+    max_score: 30
+    min_avoid: 0.8        # 至少一個「不想看」項目機率達此值
+    max_want: 0.5         # 任一「想看」項目機率達此值就不標記（例如 AI 加遊戲開發的貼文）
+    daily_limit: 10
+
+# 這些貼文不做任何動作
+skip:
+  replies: true           # 回覆貼文
+  insufficient: true      # 資訊不足的貼文
+
+pacing:
+  scroll_pause: [1.5, 3.5]   # 每次捲動後等待秒數
+  action_pause: [2, 5]       # 每個動作之後等待秒數
+
+safety:
+  max_consecutive_errors: 3  # 連續出錯幾次就停止
