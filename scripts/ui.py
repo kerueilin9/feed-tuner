@@ -138,10 +138,7 @@ def run_tab(on_finished) -> None:
     with ui.row().classes("w-full items-start gap-4"):
         with ui.card().classes("w-80"):
             ui.label("Threads 登入").classes("text-lg font-medium")
-            if LOGIN_MARKER.exists():
-                ui.label(f"已登入（{LOGIN_MARKER.read_text(encoding='utf-8').strip()}）").classes("text-green-700")
-            else:
-                ui.label("尚未登入").classes("text-orange-700")
+            login_status = ui.label()
             ui.label("在開啟的 Chrome 視窗中手動登入，程式不經手帳號密碼。").classes("text-sm text-gray-500")
             login_btn = ui.button("登入 Threads", icon="login", on_click=lambda: job.start("登入", "scripts/login.py"))
 
@@ -190,11 +187,22 @@ def run_tab(on_finished) -> None:
                 limit = f" / {limits.get(key)}" if limits.get(key) else ""
                 ui.label(f"{label}：預演 {planned}，實際 {done}{limit}").classes("text-sm")
 
+    def refresh_login() -> None:
+        # 登入、訓練（偵測到被登出時會刪除標記）都會改變狀態，每次更新都重新讀取
+        if LOGIN_MARKER.exists():
+            text, color = f"已登入（{LOGIN_MARKER.read_text(encoding='utf-8').strip()}）", "text-green-700"
+        else:
+            text, color = "尚未登入", "text-orange-700"
+        if login_status.text != text:
+            login_status.text = text
+            login_status.classes(replace=color)
+
     def tick() -> None:
         new = job.lines[seen["lines"] :]
         seen["lines"] = len(job.lines)
         for line in new:
             log_view.push(line)
+        refresh_login()
         busy = job.running
         status.text = f"執行中：{job.name}" if busy else "閒置"
         for b in (login_btn, train_btn, sample_btn):
